@@ -1,14 +1,36 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-
+const bcrypt = require('bcrypt')
 // CREATE
-router.post('/users', async (req, res) => {
+router.post('/register', async (req, res) => {
+  const { username, password } = req.body;
+  console.log(username);
   try {
-    const newUser = await User.create(req.body);
-    res.status(201).json(newUser);
+    // Sprawdź, czy użytkownik już istnieje
+    let existingUser = await User.findOne({ where: {username}});
+    console.log(existingUser);
+
+    if (existingUser) {
+      return res.status(400).json({ message: 'Użytkownik o podanej nazwie już istnieje' });
+    }
+
+    // Haszuj hasło przed zapisaniem do bazy danych
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Stwórz nowego użytkownika
+    const newUser = new User({
+      username: username,
+      password: hashedPassword,
+    });
+
+    // Zapisz użytkownika w bazie danych
+    await newUser.save();
+
+    res.json({ message: 'Pomyślnie zarejestrowano użytkownika' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error.message);
+    res.status(500).send('Błąd serwera');
   }
 });
 
